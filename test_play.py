@@ -26,7 +26,7 @@ X_train, y_train = data_train.data, data_train.target
 X_test, y_test = data_test.data, data_test.target
 
 for fdr in [0.05, 0.01, 0.1, 0.2]:
-    for C in np.logspace(-3, 2, 6):
+    for C in np.logspace(-3, 2, 3):
         pipeline.set_params(select_fdr__alpha=fdr, svm__C=C)
         pipeline.fit(X_train, y_train)
         results.append(pipeline.score(X_test, y_test))

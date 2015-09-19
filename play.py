@@ -52,39 +52,49 @@ class DaskPipeline(Pipeline):
         return L
 
     def get_predict_keys(self, X):
-        L = [('predict', self.steps[0][0], tokenize(self._fit_keys[0], X))]
-        for (name, est), fit in zip(self.steps[1:], self._fit_keys[1:]):
-            L.append(('predict', name, tokenize(fit, X)))
+        L = [('transform', self.steps[0][0], tokenize(self._fit_estimators[0], X))]
+        for (name, est), fit in zip(self.steps[1:], self._fit_estimators[1:]):
+            L.append(('transform', name, tokenize(fit, X)))
+        L[-1] = ('predict', name, tokenize(fit, X))
         return L
 
     def fit(self, X, y=None):
         names = self.get_fit_keys(X, y)
-        self._fit_keys = names
+        self._fit_estimators = [(k[0] + '-estimator',) + k[1:] for k in names]
+        self._fit_data = [(k[0] + '-data',) + k[1:] for k in names[:-1]]
         dsk = dict()
 
         est = self.steps[0][1]
         dsk = {names[0]: (fit_transform, est, X, y)}
 
-        for old_name, name, (_, est) in list(zip(names, names[1:], self.steps[1:])):
-            dsk[name] = (fit_transform, est, (getitem, old_name, 1), y)
+        for old_data, name, (_, est) in list(zip(self._fit_data[:-1],
+                                                 names[1:-1],
+                                                 self.steps[1:-1])):
+            dsk[name] = (fit_transform, est, old_data, y)
 
-        dsk[names[-1]] = (fit, self.steps[-1][1], (getitem, names[-2], 1), y)
+        dsk2 = {(k[0] + '-estimator',) + k[1:]: (getitem, k, 0)
+                for k in dsk}
+        dsk3 = {(k[0] + '-data',) + k[1:]: (getitem, k, 1)
+                for k in dsk}
+
+        dsk[names[-1]] = (fit, self.steps[-1][1], self._fit_data[-1], y)
+        self._fit_estimators.append(names[-1])
 
         self.dask = dict()
         self.dask.update(dsk)
+        self.dask.update(dsk2)
+        self.dask.update(dsk3)
 
     def predict(self, X):
         names = self.get_predict_keys(X)
-        fit_estimators = ([(getitem, fit, 0) for fit in self._fit_keys[:1]] +
-                          [self._fit_keys[-1]])
 
         self._predict_keys = names
 
-        dsk = {names[0]: (transform, fit_estimators[0], X)}
-        for old_name, name, est in zip(names[:-1], names[1:], fit_estimators[1:]):
+        dsk = {names[0]: (transform, self._fit_estimators[0], X)}
+        for old_name, name, est in zip(names[:-1], names[1:], self._fit_estimators[1:]):
             dsk[name] = (transform, est, old_name)
 
-        dsk[names[-1]] = (predict, fit_estimators[-1], names[-2])
+        dsk[names[-1]] = (predict, self._fit_estimators[-1], names[-2])
 
         self.dask.update(dsk)
 
