@@ -85,6 +85,8 @@ class DaskPipeline(Pipeline):
         self.dask.update(dsk2)
         self.dask.update(dsk3)
 
+        return self
+
     def predict(self, X):
         names = self.get_predict_keys(X)
 
@@ -97,6 +99,8 @@ class DaskPipeline(Pipeline):
         dsk[names[-1]] = (predict, self._fit_estimators[-1], names[-2])
 
         self.dask.update(dsk)
+
+        return Value(names[-1], [self.dask])
 
     def score(self, X, y):
         self.predict(X)
