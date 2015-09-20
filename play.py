@@ -28,8 +28,8 @@ def predict(est, X):
 
 
 class DaskPipeline(Pipeline):
-    def __init__(self, pairs):
-        self.steps = pairs
+    def __init__(self, steps):
+        self.steps = steps
         self.dask = dict()
 
     @property
