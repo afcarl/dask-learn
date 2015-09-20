@@ -72,7 +72,7 @@ class BaseDaskSearchCV(object):
                for train, test in cv]
         self._dask_value = value(out)
 
-        out = compute(out)
+        out, = compute(value(out))
         n_fits = len(out)
         n_folds = len(cv)
 
@@ -120,6 +120,35 @@ class BaseDaskSearchCV(object):
                 best_estimator.fit(X, **self.fit_params)
             self.best_estimator_ = best_estimator
         return self
+
+    def score(self, X, y=None):
+        """Returns the score on the given data, if the estimator has been refit
+
+        This uses the score defined by ``scoring`` where provided, and the
+        ``best_estimator_.score`` method otherwise.
+
+        Parameters
+        ----------
+        X : array-like, shape = [n_samples, n_features]
+            Input data, where n_samples is the number of samples and
+            n_features is the number of features.
+
+        y : array-like, shape = [n_samples] or [n_samples, n_output], optional
+            Target relative to X for classification or regression;
+            None for unsupervised learning.
+
+        Returns
+        -------
+        score : float
+
+        Notes
+        -----
+         * The long-standing behavior of this method changed in version 0.16.
+         * It no longer uses the metric provided by ``estimator.score`` if the
+           ``scoring`` parameter was set when fitting.
+
+        """
+        return self.best_estimator_.score(X, y)
 
 
 class GridSearchCV(BaseDaskSearchCV):
