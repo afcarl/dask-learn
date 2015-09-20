@@ -26,8 +26,10 @@ X_test, y_test = data_test.data, data_test.target
 param_grid = {'select_fdr__alpha': [0.05, 0.01, 0.1, 0.2],
               'svm__C': np.logspace(-3, 2, 3)}
 
-dask_grid = GridSearchCV(pipeline, param_grid)
-dask_grid.fit(X_train, y_train)
-dask_grid._dask_value.visualize("dask_grid.pdf")
+from dask.diagnostics import ProgressBar
+with ProgressBar():
+    dask_grid = GridSearchCV(pipeline, param_grid)
+    dask_grid.fit(X_train, y_train)
+    dask_grid._dask_value.visualize("dask_grid.pdf")
 
 print(dask_grid.score(X_test, y_test))
